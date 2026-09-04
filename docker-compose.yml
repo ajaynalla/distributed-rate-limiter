@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      RATE_LIMITER_MODE: REDIS
+      RATE_LIMITER_LIMIT: 10
+      RATE_LIMITER_WINDOW_MILLIS: 1000
+      RATE_LIMITER_REDIS_HOST: redis
+      RATE_LIMITER_REDIS_PORT: 6379
+      RATE_LIMITER_REDIS_KEY_PREFIX: "rl:"
+      RATE_LIMITER_REDIS_FAILURE_POLICY: FAIL_OPEN
+      RATE_LIMITER_REDIS_MAX_RETRIES: 2
+      RATE_LIMITER_REDIS_CIRCUIT_BREAKER_FAILURE_THRESHOLD: 5
+    depends_on:
+      redis:
+        condition: service_healthy
