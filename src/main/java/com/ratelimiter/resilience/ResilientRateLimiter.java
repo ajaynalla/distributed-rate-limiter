@@ -115,6 +115,15 @@ public class ResilientRateLimiter implements RateLimiter {
                 : RateLimitDecision.degradedDeny();
     }
 
+    /** Exposed for health reporting -- true if calls are currently being short-circuited. */
+    public boolean isCircuitOpen() {
+        return circuitBreaker.isOpen();
+    }
+
+    public FailurePolicy getFailurePolicy() {
+        return failurePolicy;
+    }
+
     private void sleepWithBackoff(int attempt) {
         long exponential = baseBackoffMillis * (1L << attempt);
         long capped = Math.min(exponential, maxBackoffMillis);
