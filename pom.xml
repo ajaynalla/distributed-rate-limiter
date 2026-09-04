@@ -89,6 +89,26 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.4.1</version>
             </plugin>
+            <!--
+              Surefire (default) runs *Test.java in the `test` phase: pure
+              unit + concurrency tests, no external services required.
+              Failsafe runs *IT.java in `integration-test`/`verify`: tests
+              that need a real Redis (via Testcontainers), i.e. Docker.
+              This split lets CI run unit tests on every push cheaply and
+              integration tests as a separate, explicit step.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
