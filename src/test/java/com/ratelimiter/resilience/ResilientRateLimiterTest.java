@@ -4,6 +4,7 @@ import com.ratelimiter.core.RateLimitDecision;
 import com.ratelimiter.core.RateLimiter;
 import com.ratelimiter.redis.RateLimiterBackendException;
 import com.ratelimiter.testsupport.ManualClock;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class ResilientRateLimiterTest {
 
     private ResilientRateLimiter withPolicy(RateLimiter delegate, FailurePolicy policy, int maxRetries) {
         CircuitBreaker breaker = new CircuitBreaker(100, 60_000, new ManualClock(0));
-        return new ResilientRateLimiter(delegate, policy, breaker, maxRetries, 1, 5);
+        return new ResilientRateLimiter(delegate, policy, breaker, maxRetries, 1, 5, new SimpleMeterRegistry());
     }
 
     @Test
@@ -107,7 +108,8 @@ class ResilientRateLimiterTest {
 
         ManualClock clock = new ManualClock(0);
         CircuitBreaker breaker = new CircuitBreaker(1, 60_000, clock);
-        ResilientRateLimiter limiter = new ResilientRateLimiter(delegate, FailurePolicy.FAIL_OPEN, breaker, 0, 1, 5);
+        ResilientRateLimiter limiter = new ResilientRateLimiter(
+                delegate, FailurePolicy.FAIL_OPEN, breaker, 0, 1, 5, new SimpleMeterRegistry());
 
         // First call: delegate fails once, trips the breaker (threshold=1).
         limiter.decide("client-A");
@@ -130,7 +132,8 @@ class ResilientRateLimiterTest {
 
         ManualClock clock = new ManualClock(0);
         CircuitBreaker breaker = new CircuitBreaker(1, 60_000, clock);
-        ResilientRateLimiter limiter = new ResilientRateLimiter(delegate, FailurePolicy.FAIL_OPEN, breaker, 1, 1, 5);
+        ResilientRateLimiter limiter = new ResilientRateLimiter(
+                delegate, FailurePolicy.FAIL_OPEN, breaker, 1, 1, 5, new SimpleMeterRegistry());
 
         RateLimitDecision first = limiter.decide("client-A"); // fails once, retries, succeeds
         assertThat(first.degraded()).isFalse();

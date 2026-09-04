@@ -2,11 +2,13 @@ package com.ratelimiter.config;
 
 import com.ratelimiter.core.InMemorySlidingWindowRateLimiter;
 import com.ratelimiter.core.RateLimiter;
+import com.ratelimiter.observability.MetricsRateLimiter;
 import com.ratelimiter.redis.RedisSlidingWindowRateLimiter;
 import com.ratelimiter.resilience.CircuitBreaker;
 import com.ratelimiter.resilience.ResilientRateLimiter;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,14 +32,14 @@ import java.time.Duration;
 public class RateLimiterConfig {
 
     @Bean
-    public RateLimiter rateLimiter(RateLimiterProperties properties) {
-        if (properties.getMode() == RateLimiterProperties.Mode.IN_MEMORY) {
-            return new InMemorySlidingWindowRateLimiter(properties.getLimit(), properties.getWindowMillis());
-        }
-        return buildRedisBackedLimiter(properties);
+    public RateLimiter rateLimiter(RateLimiterProperties properties, MeterRegistry meterRegistry) {
+        RateLimiter base = properties.getMode() == RateLimiterProperties.Mode.IN_MEMORY
+                ? new InMemorySlidingWindowRateLimiter(properties.getLimit(), properties.getWindowMillis())
+                : buildRedisBackedLimiter(properties, meterRegistry);
+        return new MetricsRateLimiter(base, meterRegistry);
     }
 
-    private RateLimiter buildRedisBackedLimiter(RateLimiterProperties properties) {
+    private RateLimiter buildRedisBackedLimiter(RateLimiterProperties properties, MeterRegistry meterRegistry) {
         RateLimiterProperties.Redis redisProps = properties.getRedis();
 
         StringRedisTemplate template = buildRedisTemplate(redisProps);
@@ -55,7 +57,8 @@ public class RateLimiterConfig {
                 breaker,
                 redisProps.getMaxRetries(),
                 redisProps.getBaseBackoffMillis(),
-                redisProps.getMaxBackoffMillis());
+                redisProps.getMaxBackoffMillis(),
+                meterRegistry);
     }
 
     private StringRedisTemplate buildRedisTemplate(RateLimiterProperties.Redis redisProps) {

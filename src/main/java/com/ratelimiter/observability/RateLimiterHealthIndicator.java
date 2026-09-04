@@ -31,7 +31,9 @@ public class RateLimiterHealthIndicator implements HealthIndicator {
     public Health health() {
         Health.Builder builder = Health.up().withDetail("mode", properties.getMode());
 
-        if (rateLimiter instanceof ResilientRateLimiter resilient) {
+        RateLimiter unwrapped = rateLimiter instanceof MetricsRateLimiter metrics ? metrics.getDelegate() : rateLimiter;
+
+        if (unwrapped instanceof ResilientRateLimiter resilient) {
             builder.withDetail("redisCircuitOpen", resilient.isCircuitOpen())
                     .withDetail("failurePolicy", resilient.getFailurePolicy());
         }

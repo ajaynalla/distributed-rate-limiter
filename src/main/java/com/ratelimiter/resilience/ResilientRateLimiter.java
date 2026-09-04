@@ -3,6 +3,8 @@ package com.ratelimiter.resilience;
 import com.ratelimiter.core.RateLimitDecision;
 import com.ratelimiter.core.RateLimiter;
 import com.ratelimiter.redis.RateLimiterBackendException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +35,14 @@ import java.util.concurrent.ThreadLocalRandom;
  *       breaker. Exhausting all retries records one breaker failure and
  *       applies the failure policy.</li>
  * </ol>
+ *
+ * <p>Also the home of the Redis-failure metrics an operator would
+ * actually alert on: retry volume by failure type, how often the
+ * breaker short-circuits calls entirely, and how often the failure
+ * policy had to make the call instead of a real quota check. These are
+ * recorded here rather than in a separate metrics decorator because the
+ * signal (which failure type, whether a retry happened, whether the
+ * breaker was open) only exists inside this class's control flow.
  */
 public class ResilientRateLimiter implements RateLimiter {
 
@@ -44,6 +54,7 @@ public class ResilientRateLimiter implements RateLimiter {
     private final int maxRetries;
     private final long baseBackoffMillis;
     private final long maxBackoffMillis;
+    private final MeterRegistry meterRegistry;
 
     public ResilientRateLimiter(
             RateLimiter delegate,
@@ -51,7 +62,8 @@ public class ResilientRateLimiter implements RateLimiter {
             CircuitBreaker circuitBreaker,
             int maxRetries,
             long baseBackoffMillis,
-            long maxBackoffMillis) {
+            long maxBackoffMillis,
+            MeterRegistry meterRegistry) {
         if (maxRetries < 0) {
             throw new IllegalArgumentException("maxRetries must be >= 0, got " + maxRetries);
         }
@@ -61,6 +73,7 @@ public class ResilientRateLimiter implements RateLimiter {
         this.maxRetries = maxRetries;
         this.baseBackoffMillis = baseBackoffMillis;
         this.maxBackoffMillis = maxBackoffMillis;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -70,6 +83,7 @@ public class ResilientRateLimiter implements RateLimiter {
                     "event=redis_circuit_open action=skip_call client_id={} policy={}",
                     clientId,
                     failurePolicy);
+            circuitOpenSkippedCounter().increment();
             return applyFailurePolicy();
         }
 
@@ -96,6 +110,7 @@ public class ResilientRateLimiter implements RateLimiter {
                 if (!willRetry) {
                     break;
                 }
+                retryCounter(type).increment();
                 sleepWithBackoff(attempt);
             }
         }
@@ -106,6 +121,7 @@ public class ResilientRateLimiter implements RateLimiter {
                 failurePolicy,
                 clientId,
                 lastFailure);
+        failurePolicyAppliedCounter().increment();
         return applyFailurePolicy();
     }
 
@@ -133,5 +149,25 @@ public class ResilientRateLimiter implements RateLimiter {
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private Counter retryCounter(FailureType type) {
+        return Counter.builder("rate_limiter.redis.retries")
+                .description("Retries attempted against Redis after a failed call")
+                .tag("failure_type", type.name())
+                .register(meterRegistry);
+    }
+
+    private Counter circuitOpenSkippedCounter() {
+        return Counter.builder("rate_limiter.redis.circuit_open_skipped")
+                .description("Calls short-circuited because the Redis circuit breaker was open")
+                .register(meterRegistry);
+    }
+
+    private Counter failurePolicyAppliedCounter() {
+        return Counter.builder("rate_limiter.redis.failure_policy_applied")
+                .description("Times the fail-open/fail-closed policy decided the outcome instead of Redis")
+                .tag("policy", failurePolicy.name())
+                .register(meterRegistry);
     }
 }
