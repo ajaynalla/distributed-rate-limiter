@@ -116,6 +116,19 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--
+              Not bound to a lifecycle phase (no executions), so it never
+              slows down local `mvn test`/`package` runs. CI invokes it
+              explicitly via `mvn spotbugs:check` as its own named step.
+            -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.4</version>
+                <configuration>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

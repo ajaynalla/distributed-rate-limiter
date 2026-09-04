@@ -64,7 +64,7 @@ import java.util.List;
  * {@code ResilientRateLimiter}, so this class stays purely about
  * correctness of the Redis-backed algorithm itself.
  */
-public class RedisSlidingWindowRateLimiter implements RateLimiter {
+public final class RedisSlidingWindowRateLimiter implements RateLimiter {
 
     private static final String DEFAULT_KEY_PREFIX = "rl:";
 

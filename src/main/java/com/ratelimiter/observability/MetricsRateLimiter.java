@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * instrumenting the lock itself (which would add overhead to the one
  * code path that most needs to stay cheap).
  */
-public class MetricsRateLimiter implements RateLimiter {
+public final class MetricsRateLimiter implements RateLimiter {
 
     private final RateLimiter delegate;
     private final Timer decisionTimer;

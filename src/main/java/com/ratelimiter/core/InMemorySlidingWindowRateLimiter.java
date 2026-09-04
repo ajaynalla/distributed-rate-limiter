@@ -54,7 +54,7 @@ import java.util.concurrent.ConcurrentMap;
  * reads and per-bucket for writes, so client registration does not become
  * a contention point either.
  */
-public class InMemorySlidingWindowRateLimiter implements RateLimiter {
+public final class InMemorySlidingWindowRateLimiter implements RateLimiter {
 
     private final int limit;
     private final long windowMillis;

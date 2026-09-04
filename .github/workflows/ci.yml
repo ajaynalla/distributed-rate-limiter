@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      - name: Compile
+        run: mvn -B compile
+
+      - name: Unit + concurrency tests
+        run: mvn -B test
+
+      - name: Publish unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
+
+      - name: Static analysis (SpotBugs)
+        run: mvn -B spotbugs:check
+
+      # Testcontainers needs a Docker daemon; GitHub-hosted ubuntu
+      # runners provide one out of the box.
+      - name: Integration tests (Redis via Testcontainers)
+        run: mvn -B verify -Dsurefire.skip=true
+
+      - name: Publish integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports
+          path: target/failsafe-reports/
+          retention-days: 7
+
+      - name: Package
+        run: mvn -B -DskipTests package
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: distributed-rate-limiter-jar
+          path: target/distributed-rate-limiter.jar
+          retention-days: 14

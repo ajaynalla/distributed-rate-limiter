@@ -38,7 +38,7 @@ import java.time.Clock;
  * {@code synchronized} block, since breaker state changes are rare
  * relative to request volume and do not need to be lock-free.
  */
-public class CircuitBreaker {
+public final class CircuitBreaker {
 
     private enum State {
         CLOSED,

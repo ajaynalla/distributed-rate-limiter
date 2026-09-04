@@ -44,7 +44,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * signal (which failure type, whether a retry happened, whether the
  * breaker was open) only exists inside this class's control flow.
  */
-public class ResilientRateLimiter implements RateLimiter {
+public final class ResilientRateLimiter implements RateLimiter {
 
     private static final Logger log = LoggerFactory.getLogger(ResilientRateLimiter.class);
 
