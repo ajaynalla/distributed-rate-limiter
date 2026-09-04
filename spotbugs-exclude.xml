@@ -1,0 +1,19 @@
+<FindBugsFilter>
+    <!--
+      EI_EXPOSE_REP / EI_EXPOSE_REP2: this codebase uses constructor-
+      injection (Spring-style DI) throughout by design: collaborators
+      such as StringRedisTemplate, MeterRegistry, and nested
+      @ConfigurationProperties objects are meant to be shared references,
+      not defensively copied. Defensively copying a MeterRegistry or a
+      Redis connection template would be actively wrong: it would stop
+      sharing the real connection/registry the rest of the app uses.
+      Excluded project-wide rather than suppressed call-by-call, since it
+      applies to essentially every constructor that takes a collaborator.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

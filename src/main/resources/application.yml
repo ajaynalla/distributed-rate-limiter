@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: distributed-rate-limiter
+  mvc:
+    problemdetails:
+      enabled: true
+
+# See com.ratelimiter.config.RateLimiterProperties for the full shape.
+rate-limiter:
+  mode: IN_MEMORY # IN_MEMORY | REDIS
+  limit: 10
+  window-millis: 1000
+  redis:
+    host: localhost
+    port: 6379
+    key-prefix: "rl:"
+    connect-timeout-millis: 200
+    command-timeout-millis: 200
+    failure-policy: FAIL_OPEN # FAIL_OPEN | FAIL_CLOSED
+    max-retries: 2
+    base-backoff-millis: 20
+    max-backoff-millis: 200
+    circuit-breaker-failure-threshold: 5
+    circuit-breaker-open-duration-millis: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true

@@ -1,0 +1,9 @@
+target/
+.git/
+.github/
+docs/
+terraform/
+benchmark/
+*.md
+.idea/
+*.iml

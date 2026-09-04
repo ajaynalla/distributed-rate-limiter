@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+      One JSON object per log line (timestamp, level, logger, message,
+      thread, MDC content including requestId) so a log aggregator can
+      parse fields directly instead of regexing free text. Kept to a
+      single appender/profile rather than a human-readable dev format +
+      JSON prod format split, to keep the project small; the JSON is
+      still readable enough for local development.
+    -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>false</includeContext>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
