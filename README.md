@@ -7,6 +7,12 @@ fully-explainable system: every design decision below has a stated
 reason and a stated tradeoff, not a claim that one approach is
 universally best.
 
+**New to rate limiting, concurrency, or distributed systems?** Start with
+[`docs/BEGINNERS_GUIDE.md`](docs/BEGINNERS_GUIDE.md), which teaches the whole
+system from first principles, then
+[`docs/TOOLS_AND_SCALING.md`](docs/TOOLS_AND_SCALING.md) for what every tool in
+the stack does and how each behaves as load grows.
+
 ## Problem
 
 Expose `tryAcquire(clientId)` (and a richer `decide(clientId)` that also
@@ -299,7 +305,8 @@ distributed-rate-limiter/
 ├── docker/                 Dockerfile
 ├── docker-compose.yml
 ├── terraform/              minimal ECS Fargate + ElastiCache foundation
-├── docs/                   ARCHITECTURE.md (5 diagrams), INTERVIEW_GUIDE.md
+├── docs/                   BEGINNERS_GUIDE.md, TOOLS_AND_SCALING.md,
+│                           ARCHITECTURE.md (5 diagrams), INTERVIEW_GUIDE.md
 ├── .github/workflows/      ci.yml
 └── pom.xml
 ```
