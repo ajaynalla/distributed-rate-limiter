@@ -7,6 +7,52 @@ fully-explainable system: every design decision below has a stated
 reason and a stated tradeoff, not a claim that one approach is
 universally best.
 
+## Interactive dashboard
+
+**[Live RateLab UI](https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site)**
+— public browser demo, verified November 6, 2026. **Public Java/Redis hosting
+is pending a connected hosting account**; real Java/API integration is
+verified locally. The public UI does not claim to contact a deployed Java backend.
+
+**RateLab** adds a lightweight React + TypeScript + Vite dashboard under
+[`frontend/`](frontend/), preserving the existing Java backend and tests.
+It includes a request simulator, sliding-window and traffic charts,
+concurrent HTTP runner, Redis/local-state comparison, failure-policy
+experiments, and request-level monitoring.
+
+The public frontend starts with an explicitly labeled **browser simulation**.
+Click **Connect Java backend** to use a running Java service. The isolated
+Java lab executes the original limiter/resilience classes; the original
+production endpoint remains available separately. A + B are independent
+limiter objects in one JVM, not two deployed servers.
+
+**Quick start with real Java + Redis + UI:**
+
+```bash
+docker compose -f docker-compose.dashboard.yml up --build
+```
+
+Open `http://localhost:8080`, click **Connect Java backend**, leave the
+origin empty, and click **Connect & verify**. For development without Docker,
+run `mvn spring-boot:run -Dspring-boot.run.arguments=--dashboard.enabled=true`,
+then `cd frontend && npm ci && npm run dev` in another terminal.
+
+See **[dashboard setup, step-by-step experiments, API, and deployment guide](docs/DASHBOARD.md)**
+for rate enforcement, concurrent clients, actual Redis outages versus
+controlled injection, CORS, metrics scope, and local/provider setup.
+[`render.yaml`](render.yaml) is ready to deploy a combined Java/UI container
+and Redis-compatible service once a Render account is connected; review its
+resource plans before applying. Static frontend hosting does not run Java.
+
+![RateLab dashboard with explicitly labeled simulated traffic](docs/screenshots/dashboard-desktop.jpg)
+
+<details>
+<summary>Mobile screenshot (390px)</summary>
+
+![Responsive mobile dashboard](docs/screenshots/dashboard-mobile.jpg)
+
+</details>
+
 **New to rate limiting, concurrency, or distributed systems?** Start with
 [`docs/BEGINNERS_GUIDE.md`](docs/BEGINNERS_GUIDE.md), which teaches the whole
 system from first principles, then

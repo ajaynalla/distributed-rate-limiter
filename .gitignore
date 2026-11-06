@@ -6,3 +6,11 @@ target/
 .DS_Store
 *.log
 benchmark-results/
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.openai/local*
+.openai/*.log

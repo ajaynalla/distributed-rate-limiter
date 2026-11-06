@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Validation errors (blank/oversized clientId, malformed JSON) are
@@ -20,6 +21,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail handleStatus(ResponseStatusException e) {
+        return ProblemDetail.forStatusAndDetail(e.getStatusCode(),
+                e.getReason() == null ? "Request failed." : e.getReason());
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException e) {

@@ -1,0 +1,35 @@
+# Creates resources only when explicitly applied through a connected Render account.
+# Confirm current plans/pricing in Render before applying.
+services:
+  - type: web
+    name: ratelab-java
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./docker/Dockerfile.dashboard
+    healthCheckPath: /actuator/health/liveness
+    envVars:
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=65"
+      - key: DASHBOARD_ENABLED
+        value: "true"
+      - key: DASHBOARD_REDIS_ENABLED
+        value: "true"
+      - key: RATE_LIMITER_MODE
+        value: REDIS
+      - key: RATE_LIMITER_REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: ratelab-redis
+          property: host
+      - key: RATE_LIMITER_REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: ratelab-redis
+          property: port
+      - key: DASHBOARD_ALLOWED_ORIGINS
+        value: "https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site"
+  - type: keyvalue
+    name: ratelab-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction

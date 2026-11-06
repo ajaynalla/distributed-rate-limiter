@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -41,3 +41,9 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+
+# The interactive lab is opt-in and isolated from /v1/rate-limit/check.
+dashboard:
+  enabled: ${DASHBOARD_ENABLED:false}
+  redis-enabled: ${DASHBOARD_REDIS_ENABLED:false}
+  allowed-origins: ${DASHBOARD_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

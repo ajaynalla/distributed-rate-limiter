@@ -7,3 +7,8 @@ benchmark/
 *.md
 .idea/
 *.iml
+**/node_modules/
+**/dist/
+**/.env
+**/.env.*
+**/.openai/

@@ -6,6 +6,40 @@ on:
   pull_request:
 
 jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Validate combined Docker image
+        run: docker build -f docker/Dockerfile.dashboard -t ratelab-dashboard:ci .
+        working-directory: .
+      - name: Verify container serves UI and Java API
+        working-directory: .
+        run: |
+          docker run -d --name ratelab-smoke -p 8080:8080 -e DASHBOARD_ENABLED=true ratelab-dashboard:ci
+          for i in $(seq 1 45); do
+            if curl -fsS http://localhost:8080/actuator/health/liveness; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/ | grep 'RateLab'
+          curl -fsS http://localhost:8080/v1/dashboard/config | grep 'demoEnabled'
+          node scripts/smoke.mjs
+          docker compose -f docker-compose.dashboard.yml config --quiet
+      - name: Container logs
+        if: failure()
+        run: docker logs ratelab-smoke
+        working-directory: .
   build:
     runs-on: ubuntu-latest
     steps:
