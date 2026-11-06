@@ -4,4 +4,6 @@ dist/
 .env
 .env.*
 !.env.example
+# Public browser configuration only; every VITE_* value is shipped to visitors.
+!.env.production
 .sites-*

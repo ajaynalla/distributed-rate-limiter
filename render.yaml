@@ -10,6 +10,13 @@ services:
     region: virginia
     branch: main
     autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - src/**
+        - frontend/**
+        - docker/**
+        - pom.xml
+        - render.yaml
     dockerfilePath: ./docker/Dockerfile.dashboard
     healthCheckPath: /actuator/health/liveness
     envVars:
@@ -23,6 +30,12 @@ services:
         value: REDIS
       - key: RATE_LIMITER_WINDOW_MILLIS
         value: "10000"
+      - key: RATE_LIMITER_REDIS_CONNECT_TIMEOUT_MILLIS
+        value: "2000"
+      - key: RATE_LIMITER_REDIS_COMMAND_TIMEOUT_MILLIS
+        value: "5000"
+      - key: RATE_LIMITER_REDIS_MAX_RETRIES
+        value: "1"
       - key: RATE_LIMITER_REDIS_HOST
         fromService:
           type: keyvalue

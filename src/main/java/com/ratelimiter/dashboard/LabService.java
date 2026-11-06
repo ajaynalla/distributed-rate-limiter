@@ -10,6 +10,8 @@ import com.ratelimiter.resilience.CircuitBreaker;
 import com.ratelimiter.resilience.FailurePolicy;
 import com.ratelimiter.resilience.ResilientRateLimiter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SocketOptions;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -44,7 +46,10 @@ public class LabService {
         if (redisEnabled) {
             var p = properties.getRedis();
             var standalone = new RedisStandaloneConfiguration(p.getHost(), p.getPort());
-            var client = LettuceClientConfiguration.builder().commandTimeout(Duration.ofMillis(300)).build();
+            var options = ClientOptions.builder().socketOptions(SocketOptions.builder()
+                    .connectTimeout(Duration.ofMillis(p.getConnectTimeoutMillis())).build()).build();
+            var client = LettuceClientConfiguration.builder().clientOptions(options)
+                    .commandTimeout(Duration.ofMillis(p.getCommandTimeoutMillis())).build();
             redisFactory = new LettuceConnectionFactory(standalone, client);
             redisFactory.afterPropertiesSet();
             redis = new StringRedisTemplate(redisFactory);
