@@ -14,3 +14,5 @@ dist/
 !.env.example
 .openai/local*
 .openai/*.log
+__pycache__/
+*.pyc

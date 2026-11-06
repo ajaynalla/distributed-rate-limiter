@@ -34,6 +34,7 @@ export class Api {
     method = "GET",
     body?: unknown,
     signal?: AbortSignal,
+    timeoutMs = 12000,
   ): Promise<T> {
     let response: Response;
     try {
@@ -42,8 +43,8 @@ export class Api {
         headers: body ? { "Content-Type": "application/json" } : {},
         body: body ? JSON.stringify(body) : undefined,
         signal: signal
-          ? AbortSignal.any([signal, AbortSignal.timeout(12000)])
-          : AbortSignal.timeout(12000),
+          ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+          : AbortSignal.timeout(timeoutMs),
       });
     } catch (e) {
       if (signal?.aborted) throw e;
@@ -69,7 +70,14 @@ export class Api {
     );
   }
   config() {
-    return this.request<Config>("/v1/dashboard/config");
+    // Free hosts may take a minute to wake after idling. Decision calls retain a short deadline.
+    return this.request<Config>(
+      "/v1/dashboard/config",
+      "GET",
+      undefined,
+      undefined,
+      90000,
+    );
   }
   metrics() {
     return this.request<Metrics>("/v1/dashboard/metrics");

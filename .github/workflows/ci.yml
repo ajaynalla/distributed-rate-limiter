@@ -6,6 +6,14 @@ on:
   pull_request:
 
 jobs:
+  deployment-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s scripts -p 'test_*.py' -v
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -27,7 +35,13 @@ jobs:
       - name: Verify container serves UI and Java API
         working-directory: .
         run: |
-          docker run -d --name ratelab-smoke -p 8080:8080 -e DASHBOARD_ENABLED=true ratelab-dashboard:ci
+          docker network create ratelab-ci
+          docker run -d --network ratelab-ci --name ratelab-redis redis:7-alpine
+          for i in $(seq 1 15); do
+            if docker exec ratelab-redis redis-cli ping; then break; fi
+            sleep 1
+          done
+          docker run -d --network ratelab-ci --name ratelab-smoke -p 8080:8080 -e DASHBOARD_ENABLED=true -e DASHBOARD_REDIS_ENABLED=true -e RATE_LIMITER_MODE=REDIS -e RATE_LIMITER_REDIS_HOST=ratelab-redis ratelab-dashboard:ci
           for i in $(seq 1 45); do
             if curl -fsS http://localhost:8080/actuator/health/liveness; then break; fi
             sleep 2
@@ -35,6 +49,7 @@ jobs:
           curl -fsS http://localhost:8080/ | grep 'RateLab'
           curl -fsS http://localhost:8080/v1/dashboard/config | grep 'demoEnabled'
           node scripts/smoke.mjs
+          python3 scripts/verify_deployment.py http://localhost:8080 --frontend http://localhost:8080 --origin http://localhost:5173 --attempts 1
           docker compose -f docker-compose.dashboard.yml config --quiet
       - name: Container logs
         if: failure()

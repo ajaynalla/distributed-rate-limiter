@@ -3,6 +3,10 @@ WORKDIR /ui
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+# The combined image always connects to its own Java API and never falls back to demo data.
+ARG VITE_API_BASE_URL=
+ARG VITE_REQUIRE_BACKEND=true
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL VITE_REQUIRE_BACKEND=$VITE_REQUIRE_BACKEND
 RUN npm run build
 
 FROM maven:3.9-eclipse-temurin-21 AS build

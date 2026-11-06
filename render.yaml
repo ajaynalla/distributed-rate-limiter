@@ -1,21 +1,28 @@
-# Creates resources only when explicitly applied through a connected Render account.
-# Confirm current plans/pricing in Render before applying.
+# Free portfolio deployment. Never substitute a paid plan without approval.
+# Verify workspace usage/payment settings before applying: free compute does not cap bandwidth overages.
+previews:
+  generation: "off"
 services:
   - type: web
     name: ratelab-java
     runtime: docker
-    plan: starter
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
     dockerfilePath: ./docker/Dockerfile.dashboard
     healthCheckPath: /actuator/health/liveness
     envVars:
       - key: JAVA_TOOL_OPTIONS
-        value: "-XX:MaxRAMPercentage=65"
+        value: "-XX:MaxRAMPercentage=55 -XX:ActiveProcessorCount=2 -Xss512k"
       - key: DASHBOARD_ENABLED
         value: "true"
       - key: DASHBOARD_REDIS_ENABLED
         value: "true"
       - key: RATE_LIMITER_MODE
         value: REDIS
+      - key: RATE_LIMITER_WINDOW_MILLIS
+        value: "10000"
       - key: RATE_LIMITER_REDIS_HOST
         fromService:
           type: keyvalue
@@ -30,6 +37,8 @@ services:
         value: "https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site"
   - type: keyvalue
     name: ratelab-redis
-    plan: starter
+    plan: free
+    region: virginia
     ipAllowList: []
     maxmemoryPolicy: noeviction
+    persistenceMode: "off"

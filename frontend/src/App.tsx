@@ -53,10 +53,14 @@ const tabs = [
 const number = (v: number) =>
   v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
-export default function App() {
+export default function App({
+  requireBackend = import.meta.env.VITE_REQUIRE_BACKEND === "true",
+  backendUrl = import.meta.env.VITE_API_BASE_URL || "",
+}: { requireBackend?: boolean; backendUrl?: string } = {}) {
   const [tab, setTab] = useState("overview");
   const [settings, setSettings] = useState<Settings>(initial);
-  const [source, setSource] = useState<Source>("demo");
+  const [source, setSource] = useState<Source>(requireBackend ? "lab" : "demo");
+  const [apiReady, setApiReady] = useState(!requireBackend);
   const [client, setClient] = useState("client-001");
   const [route, setRoute] = useState<"A" | "B" | "both">("A");
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -67,7 +71,7 @@ export default function App() {
   });
   const [config, setConfig] = useState<Config | null>(null);
   const [fleet, setFleet] = useState<Metrics | null>(null);
-  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_BASE_URL || "");
+  const [apiUrl, setApiUrl] = useState(backendUrl);
   const [dialog, setDialog] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -90,6 +94,15 @@ export default function App() {
   const runLock = useRef(false);
   const seq = useRef(0);
   const sessionStart = useRef(Date.now());
+  const startupAttempted = useRef(false);
+  const requestsDisabled = busy || (requireBackend && !apiReady);
+
+  useEffect(() => {
+    if (requireBackend && !startupAttempted.current) {
+      startupAttempted.current = true;
+      void connect();
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 250);
@@ -102,7 +115,7 @@ export default function App() {
     [],
   );
   useEffect(() => {
-    if (source === "demo") {
+    if (source === "demo" || !apiReady) {
       setFleet(null);
       return;
     }
@@ -125,7 +138,7 @@ export default function App() {
       active = false;
       clearInterval(timer);
     };
-  }, [source, apiUrl]);
+  }, [source, apiUrl, apiReady]);
 
   function resetExperiment(next: Settings = settings) {
     if (session.current) void api.current.dispose(session.current);
@@ -145,12 +158,21 @@ export default function App() {
   }
   async function connect() {
     setConnecting(true);
+    if (requireBackend) setApiReady(false);
     setError("");
     try {
       const base = normalizeUrl(apiUrl);
       const next = new Api(base);
       const c = await next.config();
-      if (!["IN_MEMORY", "REDIS"].includes(c.mode) || !Number.isFinite(c.limit))
+      if (
+        !["IN_MEMORY", "REDIS"].includes(c.mode) ||
+        !Number.isFinite(c.limit) ||
+        c.limit < 1 ||
+        !Number.isFinite(c.windowMillis) ||
+        c.windowMillis < 1 ||
+        typeof c.demoEnabled !== "boolean" ||
+        typeof c.redisEnabled !== "boolean"
+      )
         throw new Error("This is not a compatible Java rate limiter API.");
       resetExperiment();
       api.current = next;
@@ -159,7 +181,11 @@ export default function App() {
       const opts = c.demoEnabled
         ? {
             ...settings,
-            mode: c.redisEnabled ? settings.mode : ("IN_MEMORY" as const),
+            mode: c.redisEnabled
+              ? requireBackend
+                ? ("REDIS" as const)
+                : settings.mode
+              : ("IN_MEMORY" as const),
           }
         : {
             limit: c.limit,
@@ -171,6 +197,7 @@ export default function App() {
       setSettings(opts);
       engine.current = new DemoEngine(opts);
       setSource(c.demoEnabled ? "lab" : "production");
+      setApiReady(true);
       setDialog(false);
     } catch (e) {
       setError((e as Error).message);
@@ -180,6 +207,10 @@ export default function App() {
   }
   async function run(kind: "one" | "burst" | "concurrent") {
     if (runLock.current) return;
+    if (requireBackend && !apiReady) {
+      setError("Connect and verify the Java API before sending requests.");
+      return;
+    }
     if (!/^[a-zA-Z0-9_.-]{1,48}$/.test(client)) {
       setError(
         "Client ID must be 1–48 letters, numbers, dots, dashes, or underscores.",
@@ -297,11 +328,15 @@ export default function App() {
     )
     .slice(0, 40);
   const label =
-    source === "demo"
-      ? "Browser demo"
-      : source === "lab"
-        ? "Java API · isolated lab"
-        : "Java API · production";
+    requireBackend && !apiReady
+      ? connecting
+        ? "Connecting Java API"
+        : "Java API unavailable"
+      : source === "demo"
+        ? "Browser demo"
+        : source === "lab"
+          ? "Java API · isolated lab"
+          : "Java API · production";
 
   return (
     <div className="app-shell">
@@ -433,24 +468,30 @@ export default function App() {
             </button>
           </div>
           <div
-            className={`mode-banner ${source !== "demo" ? "live-banner" : ""}`}
+            className={`mode-banner ${source !== "demo" && apiReady ? "live-banner" : ""}`}
           >
             <span className="banner-symbol">
               {source === "demo" ? <Layers size={17} /> : <Radio size={17} />}
             </span>
             <div>
               <strong>
-                {source === "demo"
-                  ? "Browser simulation is active."
-                  : source === "lab"
-                    ? "Connected to the Java lab."
-                    : "Connected to the production API."}
+                {requireBackend && !apiReady
+                  ? connecting
+                    ? "Starting the Java connection."
+                    : "Java API is not connected."
+                  : source === "demo"
+                    ? "Browser simulation is active."
+                    : source === "lab"
+                      ? "Connected to the Java lab."
+                      : "Connected to the production API."}
               </strong>{" "}
-              {source === "demo"
-                ? "Decisions run locally in your browser. No Java service or Redis is being contacted."
-                : source === "lab"
-                  ? "Real limiter classes; A and B are independent limiter objects in one JVM. Lab keys are isolated."
-                  : "Requests use the original endpoint and deployment configuration."}
+              {requireBackend && !apiReady
+                ? "Requests are paused until the backend verifies. A sleeping free service can take about a minute to start. Use Connection settings to retry."
+                : source === "demo"
+                  ? "Decisions run locally in your browser. No Java service or Redis is being contacted."
+                  : source === "lab"
+                    ? "Real limiter classes; A and B are independent limiter objects in one JVM. Lab keys are isolated."
+                    : "Requests use the original endpoint and deployment configuration."}
             </div>
             {source === "demo" && (
               <span className="outline-tag">SIMULATED DATA</span>
@@ -565,7 +606,7 @@ export default function App() {
                 <p className="card-subtitle">
                   Give a client a quota. See what gets through.
                 </p>
-                <fieldset disabled={busy}>
+                <fieldset disabled={requestsDisabled}>
                   <label>
                     Client ID
                     <input
@@ -741,13 +782,17 @@ export default function App() {
                   <Network size={19} />
                   <h2>Concurrency runner</h2>
                 </div>
-                <span className="period-tag">16 concurrent HTTP workers</span>
+                <span className="period-tag">
+                  {source === "demo"
+                    ? "16 browser workers · simulation"
+                    : "16 concurrent HTTP workers"}
+                </span>
               </div>
               <p className="card-subtitle">
                 Requests share a client quota. Distinct clients get independent
                 windows. Run against A + B to compare shared and local state.
               </p>
-              <fieldset disabled={busy}>
+              <fieldset disabled={requestsDisabled}>
                 <div className="runner-form">
                   <label>
                     Client prefix
@@ -812,7 +857,7 @@ export default function App() {
                     </button>
                   )}
                   <button
-                    disabled={busy}
+                    disabled={requestsDisabled}
                     className="button primary"
                     onClick={() => run("concurrent")}
                   >
@@ -1304,19 +1349,21 @@ export default function App() {
                 </div>
               )}
               <div className="modal-buttons">
-                <button
-                  type="button"
-                  className="button secondary"
-                  disabled={connecting}
-                  onClick={() => {
-                    resetExperiment();
-                    setSource("demo");
-                    setConfig(null);
-                    setDialog(false);
-                  }}
-                >
-                  Use browser demo
-                </button>
+                {!requireBackend && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={connecting}
+                    onClick={() => {
+                      resetExperiment();
+                      setSource("demo");
+                      setConfig(null);
+                      setDialog(false);
+                    }}
+                  >
+                    Use browser demo
+                  </button>
+                )}
                 <button className="button primary" disabled={connecting}>
                   {connecting ? "Connecting…" : "Connect & verify"}
                   <ArrowRight size={15} />

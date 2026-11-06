@@ -32,8 +32,8 @@ limiter objects in one JVM, not two deployed servers.
 docker compose -f docker-compose.dashboard.yml up --build
 ```
 
-Open `http://localhost:8080`, click **Connect Java backend**, leave the
-origin empty, and click **Connect & verify**. For development without Docker,
+Open `http://localhost:8080`. The combined Docker UI connects to Java and Redis
+automatically, with no simulated fallback. For development without Docker,
 run `mvn spring-boot:run -Dspring-boot.run.arguments=--dashboard.enabled=true`,
 then `cd frontend && npm ci && npm run dev` in another terminal.
 
@@ -42,7 +42,9 @@ for rate enforcement, concurrent clients, actual Redis outages versus
 controlled injection, CORS, metrics scope, and local/provider setup.
 [`render.yaml`](render.yaml) is ready to deploy a combined Java/UI container
 and Redis-compatible service once a Render account is connected; review its
-resource plans before applying. Static frontend hosting does not run Java.
+workspace billing before applying. Both resource plans are explicitly **Free**.
+See [cloud hosting, cost limits, and Python verification](docs/HOSTING.md).
+Static frontend hosting does not run Java.
 
 ![RateLab dashboard with explicitly labeled simulated traffic](docs/screenshots/dashboard-desktop.jpg)
 

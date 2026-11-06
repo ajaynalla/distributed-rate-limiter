@@ -23,8 +23,8 @@ docker compose -f docker-compose.dashboard.yml up --build
 ```
 
 1. Open **http://localhost:8080**.
-2. Click **Connect Java backend**.
-3. Leave Backend origin empty and click **Connect & verify**.
+2. Wait for the automatic Java connection to verify.
+3. If it fails, use **Connection settings**, leave Backend origin empty, and retry.
 4. The badge must read **Java API · isolated lab** before interpreting requests as real Java/Redis execution.
 
 This separate Compose file adds a combined UI/Java image and private Redis container. The original `docker-compose.yml` and `docker/Dockerfile` remain usable for backend-only development. The UI uses the same origin, so CORS is unnecessary in this configuration.
@@ -120,13 +120,13 @@ Redis keys use a random session UUID under `rl:lab:` and inherit the existing Lu
 
 The static frontend is deployed separately using Sites. Its `.openai/hosting.json` records the hosting identity. **Sites runs the UI, not the Java backend.** The repository remains the source for both frontend and Java code.
 
-`render.yaml` describes a combined Docker web service plus an internal Redis-compatible key-value service. Apply it through a connected Render account, review the selected plans/pricing, and deploy the repository's `main` branch. Both resources are declared on `starter` plans; this file does not create free resources by itself.
+`render.yaml` describes a combined Docker web service plus a private Redis-compatible key-value service, both explicitly on `free` plans. Apply it through an authorized Render account after reviewing workspace usage and billing. See [actual-backend hosting, costs, and verification](HOSTING.md). Configuration alone does not create resources or prove deployment.
 
 The combined Docker image serves `/` and `/v1` from Spring Boot and honors Render's `PORT`. Its health check uses `/actuator/health/liveness`. After Render returns the **actual assigned HTTPS URL**:
 
-1. Open that URL, connect with an empty origin, and run the experiments above.
+1. Open that URL; the combined UI automatically verifies the Java API and selects Redis. Run the experiments above.
 2. To use the separate published Sites dashboard, click **Connect Java backend** and enter the Render HTTPS origin. The blueprint allows the published Sites origin via `DASHBOARD_ALLOWED_ORIGINS`.
-3. Alternatively build the separate frontend with `VITE_API_BASE_URL=https://<actual-java-origin>`. It prefills the connection origin; the connection is still explicitly verified with the button.
+3. For automatic real-backend connection in the separate frontend, build with `VITE_API_BASE_URL=https://<actual-java-origin>` and `VITE_REQUIRE_BACKEND=true`. Requests remain disabled until verification succeeds; this mode has no simulation fallback.
 4. Verify health, a burst, cross-instance Redis quota, and an injected failure before claiming the backend deployment is complete.
 
 For another provider, deploy `docker/Dockerfile.dashboard`, provision reachable Redis, and set the equivalent environment variables. No Redis credentials belong in `VITE_*` variables or Git. CORS permits only configured frontend origins and does not provide API authentication. The original public production endpoint remains unchanged.
@@ -141,10 +141,12 @@ mvn spotbugs:check
 mvn verify                     # includes real Redis Testcontainers tests; requires Docker
 cd frontend
 npm ci
-npm test                       # 10 behavior/API/component tests
+npm test                       # 12 behavior/API/component tests
 npm run build                  # strict TypeScript + production Vite bundle
 cd ..
 node scripts/smoke.mjs          # Java must be running with the lab enabled
+python -m unittest discover -s scripts -p 'test_*.py'
+python scripts/verify_deployment.py <actual-java-origin> --frontend <actual-ui-origin>
 ```
 
 CI retains the existing backend checks and adds frontend tests/build, Compose validation, a combined Docker image build, and a container HTTP smoke check. On restricted JDK 21 sandboxes where Mockito's dynamic attach is blocked, start Surefire with the locally resolved Byte Buddy agent in `-DargLine=-javaagent:<path-to-byte-buddy-agent.jar>`; this is an environment workaround, not a backend code change.
