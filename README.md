@@ -10,9 +10,17 @@ universally best.
 ## Interactive dashboard
 
 **[Live RateLab UI](https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site)**
-— public browser demo, verified November 6, 2026. **Public Java/Redis hosting
-is pending a connected hosting account**; real Java/API integration is
-verified locally. The public UI does not claim to contact a deployed Java backend.
+— connected to the actual hosted Java + Redis backend, verified November 6, 2026.
+
+| Resource | Live URL |
+| --- | --- |
+| Frontend | [RateLab dashboard](https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site) |
+| Backend / same-origin dashboard | [ratelab-java.onrender.com](https://ratelab-java.onrender.com) |
+| Backend health | [Actuator health](https://ratelab-java.onrender.com/actuator/health) |
+| Production decisions | `POST https://ratelab-java.onrender.com/v1/rate-limit/check` |
+
+The free Java service sleeps after 15 idle minutes. Allow about a minute for
+the first connection; initial Redis requests can also be slower during warmup.
 
 **RateLab** adds a lightweight React + TypeScript + Vite dashboard under
 [`frontend/`](frontend/), preserving the existing Java backend and tests.
@@ -20,11 +28,17 @@ It includes a request simulator, sliding-window and traffic charts,
 concurrent HTTP runner, Redis/local-state comparison, failure-policy
 experiments, and request-level monitoring.
 
-The public frontend starts with an explicitly labeled **browser simulation**.
-Click **Connect Java backend** to use a running Java service. The isolated
-Java lab executes the original limiter/resilience classes; the original
-production endpoint remains available separately. A + B are independent
-limiter objects in one JVM, not two deployed servers.
+The published frontend automatically verifies the Java API and selects Redis.
+Requests stay disabled until it connects; API failures stay visible, with no
+simulated fallback. The isolated Java lab executes the original limiter and
+resilience classes. The production endpoint remains available separately.
+A + B are independent limiter objects in one JVM, not two deployed servers.
+
+Try a burst with limit 10, window 10s, route A: **10 allowed, 5 rejected**.
+For the shared-state comparison, use a fresh experiment with a 60s window,
+1 client, 20 concurrent requests, and A + B: Redis admits **10 total** while
+in-memory admits **20**. Toggle **Inject backend failure** in Storage &
+resilience to observe real Java fail-open/fail-closed decisions and the circuit.
 
 **Quick start with real Java + Redis + UI:**
 
@@ -40,18 +54,19 @@ then `cd frontend && npm ci && npm run dev` in another terminal.
 See **[dashboard setup, step-by-step experiments, API, and deployment guide](docs/DASHBOARD.md)**
 for rate enforcement, concurrent clients, actual Redis outages versus
 controlled injection, CORS, metrics scope, and local/provider setup.
-[`render.yaml`](render.yaml) is ready to deploy a combined Java/UI container
-and Redis-compatible service once a Render account is connected; review its
-workspace billing before applying. Both resource plans are explicitly **Free**.
-See [cloud hosting, cost limits, and Python verification](docs/HOSTING.md).
-Static frontend hosting does not run Java.
+[`render.yaml`](render.yaml) deploys the combined Java/UI container and private
+Redis-compatible Valkey service on Render in Virginia. Both resources use
+**Free** plans; estimated compute cost is **$0/month** within included usage.
+No payment card or paid service was added. Redis is volatile and this demo
+does not provide always-on availability. See [hosting and Python verification](docs/HOSTING.md)
+and the [recorded deployment checks](docs/DEPLOYMENT_STATUS.md).
 
-![RateLab dashboard with explicitly labeled simulated traffic](docs/screenshots/dashboard-desktop.jpg)
+![Live RateLab connected to Java and Redis: 10 allowed, 5 rejected, zero degraded](docs/screenshots/dashboard-live.jpg)
 
 <details>
 <summary>Mobile screenshot (390px)</summary>
 
-![Responsive mobile dashboard](docs/screenshots/dashboard-mobile.jpg)
+![Responsive mobile layout; earlier browser-demo screenshot](docs/screenshots/dashboard-mobile.jpg)
 
 </details>
 
@@ -278,9 +293,12 @@ number -- each one states what it's proving in its name/Javadoc.
   happens on retry exhaustion, what each failure policy does, that the
   breaker actually trips and actually short-circuits.
 
-Run `mvn test` for everything that doesn't need Docker (49 tests, all
-passing); `mvn verify` additionally runs the Testcontainers-based
-integration tests.
+Run `mvn test` for everything that doesn't need Docker (53 tests);
+`mvn verify` additionally runs 8 Redis Testcontainers integration tests.
+The frontend has 12 behavior/API/component tests and the Python verifier has
+5 contract tests. All **78 tests**, SpotBugs, the combined Docker build, and
+real Redis HTTP checks passed in [CI](https://github.com/ajaynalla/distributed-rate-limiter/actions/runs/42283240140).
+Public API and browser verification are recorded in [deployment status](docs/DEPLOYMENT_STATUS.md).
 
 ## Scalability limitations
 

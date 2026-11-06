@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "backend": "https://ratelab-java.onrender.com",
+  "checks": [
+    {
+      "check": "liveness",
+      "passed": true
+    },
+    {
+      "check": "production_redis_decision",
+      "passed": true,
+      "roundTripMs": 9667.94
+    },
+    {
+      "check": "in_memory_a_b_concurrency",
+      "passed": true,
+      "allowed": 20,
+      "rejected": 0
+    },
+    {
+      "check": "redis_a_b_concurrency",
+      "passed": true,
+      "allowed": 10,
+      "rejected": 10
+    },
+    {
+      "check": "redis_multi_client_isolation",
+      "passed": true,
+      "clients": 4,
+      "allowed": 40,
+      "rejected": 20
+    },
+    {
+      "check": "fail_open_injected_failure",
+      "passed": true
+    },
+    {
+      "check": "fail_closed_injected_failure",
+      "passed": true
+    },
+    {
+      "check": "production_metrics",
+      "passed": true
+    },
+    {
+      "check": "frontend_cors_preflight",
+      "passed": true
+    },
+    {
+      "check": "frontend_html_reachable",
+      "passed": true,
+      "scope": "HTML only; browser interaction must be verified separately"
+    }
+  ]
+}

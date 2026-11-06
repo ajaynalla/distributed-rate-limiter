@@ -10,7 +10,9 @@ RateLab is a React + TypeScript + Vite frontend under `frontend/`. The original 
 | Java API / isolated lab | Original `InMemorySlidingWindowRateLimiter`, `RedisSlidingWindowRateLimiter`, `ResilientRateLimiter`, and `CircuitBreaker` | An expiring experiment with independent A/B limiter objects in one JVM |
 | Java API / production | Existing `POST /v1/rate-limit/check` | Existing deployment configuration and production metrics |
 
-The published static frontend starts in **Browser demo**. A public Java/Redis deployment requires a connected Java-capable hosting account; it is not provided by static hosting. Use **Connect Java backend** after starting or deploying the service. A network error never silently substitutes simulated results for real responses.
+The [published dashboard](https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site) automatically connects to [the hosted Java service](https://ratelab-java.onrender.com) and selects the Redis lab. Wait for **Java API · isolated lab**. Both published builds require a real backend and have no simulation fallback. Browser demo remains available in local development, explicitly labeled. A network error never silently substitutes simulated results for real responses.
+
+The free Java service sleeps after 15 idle minutes; allow about a minute for a cold connection and slower initial requests. See [verified deployment results and limits](DEPLOYMENT_STATUS.md).
 
 ## Local setup
 
@@ -55,7 +57,7 @@ PowerShell environment variables use `$env:DASHBOARD_ENABLED='true'`; Bash uses 
 
 ### Sliding-window rate enforcement
 
-1. Start a **New experiment**. Use storage **In-memory**, limit **10**, window **10 seconds**, route **Instance A**, client `client-001`.
+1. Start a **New experiment**. Use storage **Redis** (or **In-memory** locally), limit **10**, window **10 seconds**, route **Instance A**, client `client-001`.
 2. Click **Send burst**: it sends limit + 5 requests using up to 16 workers. Expect **10 allowed, 5 rejected** if the burst finishes inside the window.
 3. Inspect the request log: rejected responses are HTTP 429, have remaining 0 and a retry hint. HTTP 429 is a valid decision, not a connection failure.
 4. Watch timestamps slide out of the window. After 10 seconds, **Send request** should succeed again. Only accepted, non-degraded decisions consume quota.
@@ -120,14 +122,14 @@ Redis keys use a random session UUID under `rl:lab:` and inherit the existing Lu
 
 The static frontend is deployed separately using Sites. Its `.openai/hosting.json` records the hosting identity. **Sites runs the UI, not the Java backend.** The repository remains the source for both frontend and Java code.
 
-`render.yaml` describes a combined Docker web service plus a private Redis-compatible key-value service, both explicitly on `free` plans. Apply it through an authorized Render account after reviewing workspace usage and billing. See [actual-backend hosting, costs, and verification](HOSTING.md). Configuration alone does not create resources or prove deployment.
+`render.yaml` is deployed as a combined Docker web service plus a private Redis-compatible Valkey service in Render's Virginia region, both on `free` plans. See [actual-backend hosting, costs, and verification](HOSTING.md).
 
-The combined Docker image serves `/` and `/v1` from Spring Boot and honors Render's `PORT`. Its health check uses `/actuator/health/liveness`. After Render returns the **actual assigned HTTPS URL**:
+The combined Docker image serves `/` and `/v1` from Spring Boot and honors Render's `PORT`. Its health check uses `/actuator/health/liveness`.
 
-1. Open that URL; the combined UI automatically verifies the Java API and selects Redis. Run the experiments above.
-2. To use the separate published Sites dashboard, click **Connect Java backend** and enter the Render HTTPS origin. The blueprint allows the published Sites origin via `DASHBOARD_ALLOWED_ORIGINS`.
-3. For automatic real-backend connection in the separate frontend, build with `VITE_API_BASE_URL=https://<actual-java-origin>` and `VITE_REQUIRE_BACKEND=true`. Requests remain disabled until verification succeeds; this mode has no simulation fallback.
-4. Verify health, a burst, cross-instance Redis quota, and an injected failure before claiming the backend deployment is complete.
+1. Open [the Sites dashboard](https://ratelab-ajaynalla.ajaykumarnalla98.chatgpt.site) or [the same-origin Java dashboard](https://ratelab-java.onrender.com). Both automatically verify the Java API and select Redis.
+2. The separate Sites bundle uses the public values in `frontend/.env.production`: `VITE_API_BASE_URL=https://ratelab-java.onrender.com` and `VITE_REQUIRE_BACKEND=true`. The Blueprint allows that Sites origin via `DASHBOARD_ALLOWED_ORIGINS`.
+3. For another backend origin, update the public build settings, rebuild, and republish the existing Site identity. Docker instead builds with an empty API origin for same-origin access. Vite settings are embedded at build time.
+4. Check [health](https://ratelab-java.onrender.com/actuator/health) and run the Python verifier after runtime changes. Current public API and browser checks passed; see [the evidence](DEPLOYMENT_STATUS.md).
 
 For another provider, deploy `docker/Dockerfile.dashboard`, provision reachable Redis, and set the equivalent environment variables. No Redis credentials belong in `VITE_*` variables or Git. CORS permits only configured frontend origins and does not provide API authentication. The original public production endpoint remains unchanged.
 
@@ -151,4 +153,4 @@ python scripts/verify_deployment.py <actual-java-origin> --frontend <actual-ui-o
 
 CI retains the existing backend checks and adds frontend tests/build, Compose validation, a combined Docker image build, and a container HTTP smoke check. On restricted JDK 21 sandboxes where Mockito's dynamic attach is blocked, start Surefire with the locally resolved Byte Buddy agent in `-DargLine=-javaagent:<path-to-byte-buddy-agent.jar>`; this is an environment workaround, not a backend code change.
 
-Local validation on November 6, 2026: 53 backend tests and 10 frontend tests passed, SpotBugs reported zero findings, and real HTTP/UI checks verified in-memory quota, concurrency, both injected policies, circuit opening, and CORS. Docker/Redis integration verification is delegated to the repository's Linux CI because Docker is unavailable on the development host. Check the current Actions run for its actual outcome.
+Validation on November 6, 2026: [CI passed](https://github.com/ajaynalla/distributed-rate-limiter/actions/runs/42283240140) all 53 Java unit/API/concurrency tests, 8 real Redis Testcontainers tests, 12 frontend tests, and 5 Python contract tests. SpotBugs, TypeScript/Vite, Compose, combined Docker build, and real Redis HTTP checks passed. The public Python verifier passed production Redis decisions, shared quota, multi-client concurrency, both failure policies, metrics, and CORS. Browser checks on the published Sites UI independently confirmed 10/5 burst results, 10/10 Redis vs 20/0 memory across A/B, and both injected policies with visible degraded responses. See [the recorded results](DEPLOYMENT_STATUS.md).
