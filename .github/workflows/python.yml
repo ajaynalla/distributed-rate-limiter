@@ -1,0 +1,34 @@
+name: Python backend
+on:
+  push:
+    paths:
+      - "python_backend/**"
+      - "docker/Dockerfile.python"
+      - "src/main/resources/scripts/sliding_window.lua"
+      - ".github/workflows/python.yml"
+  pull_request:
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 2s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r python_backend/requirements.txt httpx==0.28.1 pytest==8.4.2
+      - run: python -m pytest python_backend -q
+        env:
+          RATELAB_TEST_REDIS: "1"
+          RATE_LIMITER_REDIS_COMMAND_TIMEOUT_MILLIS: "2000"
+      - run: docker compose -f docker-compose.python.yml up --build -d
+      - run: python scripts/verify_deployment.py http://127.0.0.1:8080
+      - if: failure()
+        run: docker compose -f docker-compose.python.yml logs
+      - if: always()
+        run: docker compose -f docker-compose.python.yml down
