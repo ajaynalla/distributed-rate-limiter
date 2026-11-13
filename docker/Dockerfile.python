@@ -1,0 +1,19 @@
+FROM node:24-alpine AS frontend
+WORKDIR /ui
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+ENV VITE_API_BASE_URL="" VITE_REQUIRE_BACKEND=true
+RUN npm run build
+
+FROM python:3.12-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 RATELAB_STATIC_DIR=/app/static
+COPY python_backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && useradd --system ratelab
+COPY python_backend/ ./python_backend/
+COPY src/main/resources/scripts/sliding_window.lua ./src/main/resources/scripts/
+COPY --from=frontend /ui/dist ./static
+USER ratelab
+EXPOSE 8080
+CMD ["sh", "-c", "exec python -m uvicorn python_backend.app:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --no-access-log"]

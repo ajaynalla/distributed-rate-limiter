@@ -12,3 +12,4 @@ benchmark/
 **/.env
 **/.env.*
 **/.openai/
+.python-deps/
