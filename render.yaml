@@ -12,16 +12,15 @@ services:
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
+        - python_backend/**
         - src/**
         - frontend/**
         - docker/**
         - pom.xml
         - render.yaml
-    dockerfilePath: ./docker/Dockerfile.dashboard
+    dockerfilePath: ./docker/Dockerfile.python
     healthCheckPath: /actuator/health/liveness
     envVars:
-      - key: JAVA_TOOL_OPTIONS
-        value: "-XX:MaxRAMPercentage=55 -XX:ActiveProcessorCount=2 -Xss512k"
       - key: DASHBOARD_ENABLED
         value: "true"
       - key: DASHBOARD_REDIS_ENABLED
