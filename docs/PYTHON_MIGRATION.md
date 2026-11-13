@@ -1,4 +1,4 @@
-# Python migration candidate
+# Python backend migration
 
 The FastAPI service implements the v1 production and lab API, dashboard configuration and counters, Redis and memory windows, and recovery policies. The current frontend source and public assets are preserved. Its hard-coded Java and JVM labels still appear when paired with Python. Java, the existing Render Blueprint, and the Terraform AWS example remain available.
 
@@ -54,3 +54,12 @@ One Windows loopback run, Java 21 Spring Boot jar and Python 3.12 Uvicorn, both 
 | Hot key | Python | 269.90 | 27.693 | 207.901 | 341.210 | 10 / 1990 |
 
 Neither workload demonstrated the requested 40% latency reduction or 25% throughput improvement. These figures do not estimate Redis performance or daily capacity. Availability and deployment time targets require longer observations and comparable deployment histories.
+
+## Live cutover — November 13, 2026
+
+PR [#3](https://github.com/ajaynalla/distributed-rate-limiter/pull/3) merged into main. Render's existing free service deployed [bc47ed1](https://github.com/ajaynalla/distributed-rate-limiter/commit/bc47ed1fbb990a24f09d4ea8c8309eac719878f5) via the Blueprint. The original API origin and private Redis service were reused. [/actuator/info](https://ratelab-java.onrender.com/actuator/info) returned runtime python.
+
+The public verifier passed liveness, production Redis, A/B shared quota, four-client isolation, both injected failure policies, metrics, CORS, and frontend reachability. The public browser independently returned 10 allowed and 5 rejected with zero degraded decisions in a 15-request Redis burst.
+
+To roll back persistently, revert the Blueprint cutover commit and allow Render to sync the Java Dockerfile. The previous successful Java deploy also remains available in Render's deployment history. Lab sessions are process-local and reset on replacement.
+

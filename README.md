@@ -1,5 +1,7 @@
 # Distributed Rate Limiter
 
+**Current live runtime: Python / FastAPI.** The existing dashboard connects to the Python API on the original free Render service. The Java implementation and historical Java deployment notes remain available for comparison and rollback. See the [Python architecture, benchmarks, and live verification](docs/PYTHON_MIGRATION.md).
+
 A rate limiter built in Java, in-memory first and Redis-backed second,
 with the concurrency, failure-handling, observability, and deployment
 work a production version of it would actually need. Built as a small,
